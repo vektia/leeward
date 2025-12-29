@@ -1,20 +1,36 @@
-//! Wire protocol for daemon communication (msgpack)
+//! Wire protocol for daemon communication
+//!
+//! Supports both traditional msgpack and zero-copy shared memory modes
 
 use leeward_core::ExecutionResult;
 use serde::{Deserialize, Serialize};
+use std::os::unix::io::RawFd;
 use std::time::Duration;
 
 /// Request to execute code
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteRequest {
-    /// Python code to execute
-    pub code: String,
+    /// Python code to execute (or None if using shared memory)
+    pub code: Option<String>,
+    /// Shared memory slot ID (if using shared memory mode)
+    pub shm_slot_id: Option<u32>,
     /// Optional timeout override
     pub timeout: Option<Duration>,
     /// Optional memory limit override
     pub memory_limit: Option<u64>,
     /// Input files (path -> content)
     pub files: Vec<(String, Vec<u8>)>,
+}
+
+/// Communication mode for the request
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum CommunicationMode {
+    /// Traditional msgpack over socket
+    Socket,
+    /// io_uring for control, shared memory for data
+    IoUring,
+    /// Shared memory for both control and data
+    SharedMemory,
 }
 
 /// Response from execution

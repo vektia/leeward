@@ -72,7 +72,19 @@ async fn handle_connection(
 async fn handle_request(request: Request, pool: &WorkerPool) -> Response {
     match request {
         Request::Execute(req) => {
-            match pool.execute(&req.code).await {
+            // TODO: Handle shared memory mode (shm_slot_id)
+            let code = match req.code {
+                Some(ref code) => code,
+                None => {
+                    return Response::Execute(protocol::ExecuteResponse {
+                        success: false,
+                        result: None,
+                        error: Some("no code provided (shared memory not yet implemented)".into()),
+                    });
+                }
+            };
+
+            match pool.execute(code).await {
                 Ok(result) => Response::Execute(protocol::ExecuteResponse {
                     success: true,
                     result: Some(result),

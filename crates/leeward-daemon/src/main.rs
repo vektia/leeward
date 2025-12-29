@@ -1,4 +1,10 @@
-//! leeward-daemon - Persistent sandbox daemon with worker pool
+//! leeward-daemon - Persistent sandbox daemon with pre-forked worker pool
+//!
+//! Performance optimizations:
+//! - Pre-forked workers with clone3 + CLONE_INTO_CGROUP
+//! - io_uring for zero-copy IPC
+//! - Shared memory (memfd) for results
+//! - SECCOMP_USER_NOTIF for non-fatal syscall filtering
 
 use std::path::PathBuf;
 use tokio::net::UnixListener;
@@ -6,6 +12,7 @@ use tracing_subscriber::EnvFilter;
 use anyhow::Result;
 
 mod config;
+mod iouring;
 mod pool;
 mod protocol;
 mod server;
@@ -46,7 +53,7 @@ async fn main() -> Result<()> {
     tracing::info!(workers = config.num_workers, "worker pool initialized");
 
     // Run server
-    server::run(listener, pool, config).await?;
+    server::run(listener, pool, config).await.map_err(|e| anyhow::anyhow!("{}", e))?;
 
     Ok(())
 }

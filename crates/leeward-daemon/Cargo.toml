@@ -24,6 +24,8 @@ signal-hook = { workspace = true }
 signal-hook-tokio = { workspace = true }
 parking_lot = { workspace = true }
 thiserror = { workspace = true }
+io-uring = { workspace = true }
+memfd = { workspace = true }
 anyhow = "1"
 
 [lints]

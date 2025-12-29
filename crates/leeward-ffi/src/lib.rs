@@ -95,7 +95,7 @@ fn set_last_error(msg: String) {
 ///
 /// Returns NULL if no error. The returned string is valid until the next
 /// leeward call on this thread.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn leeward_last_error() -> *const c_char {
     thread_local! {
         static ERROR_BUF: RefCell<Option<CString>> = const { RefCell::new(None) };
@@ -120,14 +120,15 @@ pub extern "C" fn leeward_last_error() -> *const c_char {
 /// Connect to the leeward daemon
 ///
 /// Returns NULL on failure. Call `leeward_last_error()` for details.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn leeward_connect(socket_path: *const c_char) -> *mut LeewardHandle {
     if socket_path.is_null() {
         set_last_error("socket_path is null".into());
         return ptr::null_mut();
     }
 
-    let path = match CStr::from_ptr(socket_path).to_str() {
+    // SAFETY: Caller guarantees socket_path is a valid C string
+    let path = match unsafe { CStr::from_ptr(socket_path) }.to_str() {
         Ok(s) => s.to_string(),
         Err(_) => {
             set_last_error("invalid UTF-8 in socket_path".into());
@@ -141,10 +142,11 @@ pub unsafe extern "C" fn leeward_connect(socket_path: *const c_char) -> *mut Lee
 }
 
 /// Disconnect from the daemon
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn leeward_disconnect(handle: *mut LeewardHandle) {
     if !handle.is_null() {
-        drop(Box::from_raw(handle));
+        // SAFETY: Caller guarantees handle is valid and was allocated by Box
+        drop(unsafe { Box::from_raw(handle) });
     }
 }
 
@@ -152,7 +154,7 @@ pub unsafe extern "C" fn leeward_disconnect(handle: *mut LeewardHandle) {
 ///
 /// Returns NULL on failure. Call `leeward_last_error()` for details.
 /// The caller must free the result with `leeward_result_free()`.
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn leeward_execute(
     handle: *mut LeewardHandle,
     code: *const c_char,
@@ -168,7 +170,8 @@ pub unsafe extern "C" fn leeward_execute(
         return ptr::null_mut();
     }
 
-    let _code = match CStr::from_ptr(code).to_str() {
+    // SAFETY: Caller guarantees code is a valid C string
+    let _code = match unsafe { CStr::from_ptr(code) }.to_str() {
         Ok(s) => s,
         Err(_) => {
             set_last_error("invalid UTF-8 in code".into());
@@ -179,7 +182,8 @@ pub unsafe extern "C" fn leeward_execute(
     let _opts = if options.is_null() {
         None
     } else {
-        Some(&*options)
+        // SAFETY: Caller guarantees options pointer is valid
+        Some(unsafe { &*options })
     };
 
     // TODO: Actually execute via socket
@@ -202,21 +206,24 @@ pub unsafe extern "C" fn leeward_execute(
 }
 
 /// Free an execution result
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn leeward_result_free(result: *mut LeewardResult) {
     if !result.is_null() {
-        let r = Box::from_raw(result);
+        // SAFETY: Caller guarantees result was allocated by Box
+        let r = unsafe { Box::from_raw(result) };
         if !r.stdout_data.is_null() {
-            drop(CString::from_raw(r.stdout_data));
+            // SAFETY: stdout_data was allocated by CString::into_raw
+            drop(unsafe { CString::from_raw(r.stdout_data) });
         }
         if !r.stderr_data.is_null() {
-            drop(CString::from_raw(r.stderr_data));
+            // SAFETY: stderr_data was allocated by CString::into_raw
+            drop(unsafe { CString::from_raw(r.stderr_data) });
         }
     }
 }
 
 /// Get library version
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn leeward_version() -> *const c_char {
     static VERSION: Lazy<CString> =
         Lazy::new(|| CString::new(env!("CARGO_PKG_VERSION")).unwrap());

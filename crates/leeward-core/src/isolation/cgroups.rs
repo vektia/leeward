@@ -1,6 +1,6 @@
 //! Cgroups v2 resource limits
 
-use crate::{LeewardError, Result};
+use crate::Result;
 
 /// Configuration for cgroups v2 resource limits
 #[derive(Debug, Clone)]
