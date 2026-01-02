@@ -1,8 +1,7 @@
-//! clone3 syscall wrapper with CLONE_INTO_CGROUP support
+//! clone3 syscall wrapper for process creation
 
 use crate::{LeewardError, Result};
 use libc::pid_t;
-use std::os::unix::io::RawFd;
 
 /// clone3 clone_args structure (from linux/sched.h)
 #[repr(C)]
@@ -24,15 +23,10 @@ pub struct CloneArgs {
     pub set_tid: u64,
     /// Size of set_tid array
     pub set_tid_size: u64,
-    /// File descriptor for cgroup
-    pub cgroup: u64,
 }
 
 /// clone3 syscall number
 const SYS_CLONE3: i64 = 435;
-
-/// CLONE_INTO_CGROUP flag (requires Linux >= 5.7)
-pub const CLONE_INTO_CGROUP: u64 = 0x200000000;
 
 /// Wrapper around the clone3 syscall
 ///
@@ -58,23 +52,14 @@ pub unsafe fn clone3(args: &CloneArgs) -> Result<pid_t> {
     Ok(ret as pid_t)
 }
 
-/// Helper to create a pre-forked worker with namespaces and cgroup
+/// Helper to create a pre-forked worker with namespaces
 pub fn clone_worker(
-    cgroup_fd: RawFd,
     namespace_flags: u64,
     child_fn: impl FnOnce() -> Result<()>,
 ) -> Result<pid_t> {
-    let mut flags = namespace_flags;
-
-    // Only use CLONE_INTO_CGROUP if we have a valid fd
-    if cgroup_fd >= 0 {
-        flags |= CLONE_INTO_CGROUP;
-    }
-
     let args = CloneArgs {
-        flags,
+        flags: namespace_flags,
         exit_signal: libc::SIGCHLD as u64,
-        cgroup: if cgroup_fd >= 0 { cgroup_fd as u64 } else { 0 },
         ..Default::default()
     };
 

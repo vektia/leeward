@@ -13,9 +13,6 @@ pub enum LeewardError {
     #[error("landlock error: {0}")]
     Landlock(String),
 
-    #[error("cgroups error: {0}")]
-    Cgroups(String),
-
     #[error("mount error: {0}")]
     Mount(String),
 

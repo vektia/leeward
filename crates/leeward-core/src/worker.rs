@@ -1,5 +1,4 @@
 use crate::{pipe::ParentPipe, ExecutionResult, LeewardError, Result, SandboxConfig};
-use std::os::unix::io::RawFd;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkerState {
@@ -21,8 +20,6 @@ pub struct Worker {
     pub execution_count: u64,
     config: SandboxConfig,
     pipe: Option<ParentPipe>,
-    /// Cgroup file descriptor (for CLONE_INTO_CGROUP)
-    cgroup_fd: Option<RawFd>,
 }
 
 impl Worker {
@@ -34,43 +31,14 @@ impl Worker {
             execution_count: 0,
             config,
             pipe: None,
-            cgroup_fd: None,
         }
     }
 
     pub fn spawn(&mut self) -> Result<()> {
-        use crate::isolation::{clone3, CgroupsConfig};
+        use crate::isolation::clone3;
         use crate::pipe::WorkerPipe;
 
         tracing::info!(worker_id = self.id, "spawning pre-forked worker");
-
-        // Try to create cgroup for this worker (optional - continue if it fails)
-        let cgroup_fd = if self.config.memory_limit > 0 || self.config.cpu_limit < 100 {
-            let cgroup_config = CgroupsConfig {
-                memory_max: self.config.memory_limit,
-                cpu_percent: self.config.cpu_limit,
-                pids_max: self.config.max_pids,
-                allow_swap: false,
-            };
-
-            match cgroup_config.create_cgroup(&format!("worker-{}", self.id)) {
-                Ok(cgroup_handle) => {
-                    let fd = cgroup_handle.as_raw_fd().unwrap_or(-1);
-                    // Store cgroup handle (we'll leak it for now, proper cleanup later)
-                    std::mem::forget(cgroup_handle);
-                    tracing::info!("cgroups enabled for worker {}", self.id);
-                    fd
-                }
-                Err(e) => {
-                    tracing::warn!("cgroups not available (running without root?): {}", e);
-                    -1
-                }
-            }
-        } else {
-            -1
-        };
-
-        self.cgroup_fd = Some(cgroup_fd);
 
         // Create pipes for communication
         let worker_pipe = WorkerPipe::new()?;
@@ -80,7 +48,7 @@ impl Worker {
         let namespace_flags = 0; // We'll enter namespaces from inside the worker
         let config = self.config.clone();
 
-        let pid = clone3::clone_worker(cgroup_fd, namespace_flags, move || {
+        let pid = clone3::clone_worker(namespace_flags, move || {
             worker_main(child_pipe, &config)
         })?;
 
@@ -91,7 +59,7 @@ impl Worker {
         tracing::info!(
             worker_id = self.id,
             pid = pid,
-            "worker spawned and ready with cgroup"
+            "worker spawned and ready"
         );
 
         Ok(())

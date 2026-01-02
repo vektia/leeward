@@ -61,10 +61,6 @@ enum Commands {
         /// Timeout in seconds
         #[arg(short, long, default_value = "30")]
         timeout: u64,
-
-        /// Memory limit in MB
-        #[arg(short, long, default_value = "256")]
-        memory: u64,
     },
 
     /// Get daemon status
@@ -90,10 +86,6 @@ enum Commands {
         #[arg(short, long, default_value = "30")]
         timeout: u64,
 
-        /// Memory limit in MB
-        #[arg(short, long, default_value = "256")]
-        memory: u64,
-
         /// Allow network access
         #[arg(long)]
         network: bool,
@@ -116,7 +108,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             code,
             socket,
             timeout,
-            memory,
         } => {
             let socket = socket.unwrap_or_else(default_socket_path);
 
@@ -125,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     code: Some(code),
                     shm_slot_id: None,
                     timeout: Some(std::time::Duration::from_secs(timeout)),
-                    memory_limit: Some(memory * 1024 * 1024),
+                    memory_limit: None,
                     files: Vec::new(),
                 }
             );
@@ -195,20 +186,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Run {
             code,
             timeout,
-            memory,
             network,
         } => {
             println!("Running directly (no daemon)");
             println!("Code: {}", code);
             println!(
-                "Timeout: {}s, Memory: {}MB, Network: {}",
-                timeout, memory, network
+                "Timeout: {}s, Network: {}",
+                timeout, network
             );
 
             // TODO: Use leeward_core directly to execute
             let _config = leeward_core::SandboxConfig::builder()
                 .timeout_secs(timeout)
-                .memory_limit_mb(memory)
                 .allow_network(network)
                 .build();
         }

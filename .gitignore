@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 .pytest_cache/
 .ruff_cache
@@ -9,18 +10,22 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-
-target/
-
 *.whl
+
+# Rust
+target/
 *.so
 
+# Development tools
 .direnv/
 .devenv/
 .pre-commit-config.yaml
-
-/target
-
 .cargo-home/
 
-include/
+# Nix build results
+result
+result-*
+
+# Runtime files
+*.sock
+.leeward.sock

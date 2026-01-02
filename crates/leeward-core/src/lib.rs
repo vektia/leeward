@@ -6,7 +6,6 @@
 //! - Linux namespaces via clone3 (user, pid, mount, net, ipc)
 //! - seccomp user notifications (SECCOMP_USER_NOTIF)
 //! - Landlock filesystem restrictions
-//! - cgroups v2 resource limits (CLONE_INTO_CGROUP)
 //! - Shared memory for zero-copy results (memfd + mmap)
 //! - Pipe-based code delivery to pre-forked workers
 

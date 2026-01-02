@@ -16,17 +16,8 @@ pub struct SandboxConfig {
     /// Paths to bind mount read-write
     pub rw_binds: Vec<PathBuf>,
 
-    /// Memory limit in bytes
-    pub memory_limit: u64,
-
-    /// CPU limit as percentage (0-100)
-    pub cpu_limit: u32,
-
     /// Maximum execution time
     pub timeout: Duration,
-
-    /// Maximum number of processes/threads
-    pub max_pids: u32,
 
     /// Allow network access
     pub allow_network: bool,
@@ -48,10 +39,7 @@ impl Default for SandboxConfig {
                 PathBuf::from("/lib64"),
             ],
             rw_binds: vec![],
-            memory_limit: 256 * 1024 * 1024, // 256MB
-            cpu_limit: 100,
             timeout: Duration::from_secs(30),
-            max_pids: 32,
             allow_network: false,
             workdir: PathBuf::from("/home/sandbox"),
             env: vec![
@@ -81,23 +69,6 @@ impl SandboxConfigBuilder {
     #[must_use]
     pub fn python_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.config.python_path = path.into();
-        self
-    }
-
-    #[must_use]
-    pub fn memory_limit(mut self, bytes: u64) -> Self {
-        self.config.memory_limit = bytes;
-        self
-    }
-
-    #[must_use]
-    pub fn memory_limit_mb(self, mb: u64) -> Self {
-        self.memory_limit(mb * 1024 * 1024)
-    }
-
-    #[must_use]
-    pub fn cpu_limit(mut self, percent: u32) -> Self {
-        self.config.cpu_limit = percent.min(100);
         self
     }
 
