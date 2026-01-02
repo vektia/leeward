@@ -3,9 +3,9 @@ resolver = "2"
 members = ["crates/*"]
 
 [workspace.package]
-version = "0.0.1"
+version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/vektia/leeward"
 authors = ["Vektia"]
 rust-version = "1.85"
