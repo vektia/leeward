@@ -29,7 +29,7 @@ pub struct DaemonConfig {
 impl Default for DaemonConfig {
     fn default() -> Self {
         Self {
-            socket_path: PathBuf::from("/var/run/leeward.sock"),
+            socket_path: leeward_core::config::default_socket_path(),
             num_workers: 4,
             recycle_after: 100,
             sandbox_config: SandboxConfig::default(),

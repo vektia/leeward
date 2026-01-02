@@ -1,6 +1,7 @@
 //! leeward CLI - Command line interface for the sandbox
 
 use clap::{Parser, Subcommand};
+use leeward_core::config::default_socket_path;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -18,9 +19,9 @@ enum Commands {
         /// Code to execute (or - for stdin)
         code: String,
 
-        /// Socket path
-        #[arg(short, long, default_value = "/var/run/leeward.sock")]
-        socket: PathBuf,
+        /// Socket path (defaults to LEEWARD_SOCKET env var or /run/leeward/leeward.sock)
+        #[arg(short, long)]
+        socket: Option<PathBuf>,
 
         /// Timeout in seconds
         #[arg(short, long, default_value = "30")]
@@ -33,16 +34,16 @@ enum Commands {
 
     /// Get daemon status
     Status {
-        /// Socket path
-        #[arg(short, long, default_value = "/var/run/leeward.sock")]
-        socket: PathBuf,
+        /// Socket path (defaults to LEEWARD_SOCKET env var or /run/leeward/leeward.sock)
+        #[arg(short, long)]
+        socket: Option<PathBuf>,
     },
 
     /// Ping the daemon
     Ping {
-        /// Socket path
-        #[arg(short, long, default_value = "/var/run/leeward.sock")]
-        socket: PathBuf,
+        /// Socket path (defaults to LEEWARD_SOCKET env var or /run/leeward/leeward.sock)
+        #[arg(short, long)]
+        socket: Option<PathBuf>,
     },
 
     /// Run code directly (without daemon, for testing)
@@ -82,6 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             timeout,
             memory,
         } => {
+            let socket = socket.unwrap_or_else(default_socket_path);
             println!("Executing via daemon at {:?}", socket);
             println!("Code: {}", code);
             println!("Timeout: {}s, Memory: {}MB", timeout, memory);
@@ -89,11 +91,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         Commands::Status { socket } => {
+            let socket = socket.unwrap_or_else(default_socket_path);
             println!("Getting status from {:?}", socket);
             // TODO: Connect to daemon and get status
         }
 
         Commands::Ping { socket } => {
+            let socket = socket.unwrap_or_else(default_socket_path);
             println!("Pinging daemon at {:?}", socket);
             // TODO: Connect and ping
         }

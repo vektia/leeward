@@ -5,9 +5,13 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    devenv.url = "github:cachix/devenv";
   };
 
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+  outputs = inputs@{ self, nixpkgs, flake-utils, rust-overlay, devenv }:
+    let
+      nixosModules.default = import ./nix/module.nix;
+    in
     flake-utils.lib.eachDefaultSystem (system:
       let
         overlays = [ (import rust-overlay) ];
@@ -23,7 +27,10 @@
           ffi = packages.leeward-ffi;
         };
 
-        devShells.default = import ./nix/shell.nix { inherit pkgs; };
+        devShells.default = devenv.lib.mkShell {
+          inherit inputs pkgs;
+          modules = [ (import ./nix/shell.nix) ];
+        };
       }
-    );
+    ) // { inherit nixosModules; };
 }

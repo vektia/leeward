@@ -57,6 +57,23 @@ leeward exec "print('hello')"
 - User namespaces enabled
 - No root required
 
+## Development
+
+```bash
+# With direnv (auto-loads environment)
+direnv allow
+
+# Or manually
+nix develop
+
+# Build and run
+cargo build --release
+./target/release/leeward-daemon &  # runs in background
+./target/release/leeward exec "print('hello')"
+```
+
+Environment sets `LEEWARD_SOCKET=$DEVENV_STATE/leeward.sock` for isolation between clones.
+
 ## Status
 
 Building the core. Not ready for production.

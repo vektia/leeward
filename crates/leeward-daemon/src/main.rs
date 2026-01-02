@@ -6,10 +6,9 @@
 //! - Shared memory (memfd) for results
 //! - SECCOMP_USER_NOTIF for non-fatal syscall filtering
 
-use std::path::PathBuf;
+use anyhow::Result;
 use tokio::net::UnixListener;
 use tracing_subscriber::EnvFilter;
-use anyhow::Result;
 
 mod config;
 mod iouring;

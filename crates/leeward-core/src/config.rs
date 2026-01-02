@@ -141,3 +141,14 @@ impl SandboxConfigBuilder {
         self.config
     }
 }
+
+/// Get default socket path from LEEWARD_SOCKET env var or system default
+///
+/// Returns:
+/// - `$LEEWARD_SOCKET` if set (for development)
+/// - `/run/leeward/leeward.sock` otherwise (production)
+pub fn default_socket_path() -> PathBuf {
+    std::env::var("LEEWARD_SOCKET")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/run/leeward/leeward.sock"))
+}

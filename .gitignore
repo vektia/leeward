@@ -17,6 +17,8 @@ Cargo.lock
 *.so
 
 .direnv/
+.devenv/
+.pre-commit-config.yaml
 
 /target
 
