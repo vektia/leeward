@@ -1,85 +1,91 @@
-# pyenclave
+# leeward
 
-**Run untrusted Python code safely with native Linux isolation. No containers needed.**
+> Linux-native sandbox for running untrusted code. No containers. No VMs. Fast.
 
-[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![Linux](https://img.shields.io/badge/platform-linux-green.svg)](https://www.kernel.org/)
+⚠️ **Work in progress** — Core isolation primitives are being implemented.
 
-`pyenclave` is a hermetic Python sandbox that executes untrusted code using native Linux security features: **user namespaces**, **seccomp-BPF**, **Landlock LSM**, and **resource limits**. Built as a single Python package with a Rust core (PyO3).
+## Why
 
-> **Status**: Alpha - Core functionality implemented, production-ready features in progress
+AI agents need to execute code. Current options suck:
 
-## ✨ Features
+| Solution | Problem |
+|----------|---------|
+| Docker | 300-500ms startup, heavy |
+| E2B/Modal | Cloud-only, expensive |
+| WASM | No native libs, limited |
+| Firecracker | Overkill for most cases |
 
-- 🔒 **Multi-layer isolation**: User namespaces + seccomp + Landlock + rlimits
-- 🐍 **Multi-Python support**: Python 3.8+ with BYO venv/conda (read-only)
-- 🚫 **Network isolation**: No network access by default
-- 📁 **Filesystem control**: Minimal syscalls, explicit allowlist
-- ⚡ **Stateless by default**: Ephemeral execution with opt-in persistence
-- 🏗️ **No external dependencies**: Pure Linux, no Docker/containers
-- 🦀 **High performance**: Rust core with Python API
+leeward gives you **~0.5ms** execution latency using native Linux primitives.
 
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# From PyPI (when published)
-pip install pyenclave
-
-# From source
-git clone https://github.com/fullzer4/pyenclave
-cd pyenclave
-pip install -e .
+## How
+```
+┌──────────────┐   io_uring/shm    ┌─────────────────────────────────┐
+│    Client    │ ◄───────────────► │      leeward daemon             │
+│   (any lang) │   zero-copy IPC   │                                 │
+└──────────────┘                   │  ┌───────────────────────────┐  │
+                                   │  │ Pre-warmed Worker Pool    │  │
+      Python, Go,                  │  │                           │  │
+      Node, Rust                   │  │ [W1] Python idle ──pipe   │  │
+      via C FFI                    │  │ [W2] Python idle ──pipe   │  │
+                                   │  │ [W3] Python idle ──pipe   │  │
+                                   │  └───────────────────────────┘  │
+                                   └─────────────────────────────────┘
 ```
 
-### Basic Usage
+Each worker is isolated with:
+- Linux namespaces (user, pid, mount, net, ipc) via clone3
+- seccomp user notifications (supervisor decides on blocked syscalls)
+- Landlock filesystem restrictions
+- cgroups v2 resource limits (CLONE_INTO_CGROUP)
 
+## Usage
 ```python
-from pyenclave import run_python
+from leeward import Leeward
 
-# Execute untrusted code
-result = run_python(code="print('Hello from sandbox!')")
-print(result.stdout.decode())  # Hello from sandbox!
-print(result.exit_code)         # 0
-
-# With resource limits
-result = run_python(
-    code="import time; time.sleep(10)",
-    time_limit_s=2,
-    memory_limit_mb=128
-)
-
-# With filesystem access
-result = run_python(
-    script="/path/to/script.py",
-    mounts={"ro": [["/data", "/data"]]},
-    network=False
-)
+with Leeward() as sandbox:
+    result = sandbox.execute("print(sum(range(100)))")
+    print(result.stdout)  # "4950"
 ```
-
-## 📋 Requirements
-
-- **OS**: Linux kernel 5.10+ (6.1+ recommended for full Landlock support)
-- **Python**: 3.8 or higher
-- **Architecture**: x86_64, aarch64
-
-Check system compatibility:
 ```bash
-pyenclave probe
+# Or via CLI
+leeward exec "print('hello')"
 ```
 
-## 🤝 Contributing
+## Requirements
 
-Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+- Linux >= 5.13 (Landlock support)
+- User namespaces enabled
+- No root required
 
-Areas of interest:
-- Additional seccomp profiles
-- Support for more architectures
-- Performance optimizations
-- Documentation improvements
+## Development
 
----
+```bash
+# With direnv (auto-loads environment)
+direnv allow
 
-**⚠️ Security Notice**: While `pyenclave` provides strong isolation, no sandbox is 100% secure. Always run with defense in depth and monitor for kernel vulnerabilities. See [SECURITY.md](SECURITY.md) for details.
+# Or manually
+nix develop
+
+# Build and run
+cargo build --release
+./target/release/leeward-daemon &  # runs in background
+./target/release/leeward exec "print('hello')"
+```
+
+Environment sets `LEEWARD_SOCKET=$DEVENV_STATE/leeward.sock` for isolation between clones.
+
+## Status
+
+Building the core. Not ready for production.
+
+## Support
+
+leeward is free and open source under [Apache-2.0](LICENSE.md).
+
+- **Using in production?** [Let us know](ADOPTION.md) — it helps the project
+- **Sponsors** — [github.com/sponsors/vektia](https://github.com/sponsors/vektia)
+- **Enterprise support** — hello@vektia.com.br
+
+## License
+
+[Apache-2.0](LICENSE.md)
